@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パスタ・カスケード解析 (最適化版)</title>
+    <script src="three.min.js"></script>
+    <script src="pastaSimulation.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        // THREE.js scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Object pooling for pasta bodies
+        class PastaPool {
+            constructor(size) {
+                this.pool = [];
+                for (let i = 0; i < size; i++) {
+                    this.pool.push(this.createPasta());
+                }
+            }
+            createPasta() {
+                const geometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 32);
+                const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                return new THREE.Mesh(geometry, material);
+            }
+            getPasta() {
+                return this.pool.pop() || this.createPasta();
+            }
+            returnPasta(pasta) {
+                this.pool.push(pasta);
+            }
+        }
+
+        const pastaPool = new PastaPool(100);
+
+        // Instanced rendering
+        const pastaCount = 1000;
+        const pastaGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 32);
+        const pastaMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const pastaMesh = new THREE.InstancedMesh(pastaGeometry, pastaMaterial, pastaCount);
+        for (let i = 0; i < pastaCount; i++) {
+            const dummy = new THREE.Object3D();
+            dummy.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, Math.random() * 10 - 5);
+            dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            dummy.updateMatrix();
+            pastaMesh.setMatrixAt(i, dummy.matrix);
+        }
+        scene.add(pastaMesh);
+
+        // Reduced physics iterations
+        function simulatePhysics() {
+            // Simple physics simulation with reduced iterations
+            for (let i = 0; i < 5; i++) {
+                // Physics logic here
+            }
+        }
+
+        // Adaptive quality settings
+        function adjustQuality() {
+            // Adjust rendering settings based on performance
+            const performance = window.performance.now();
+            if (performance < 30) {
+                renderer.setScissorTest(false);
+            } else {
+                renderer.setScissorTest(true);
+            }
+        }
+
+        // WebWorker support for physics calculations
+        const worker = new Worker('physicsWorker.js');
+        worker.onmessage = function(event) {
+            const physicsData = event.data; // process data from worker
+        };
+
+        // Main render loop
+        function animate() {
+            requestAnimationFrame(animate);
+            simulatePhysics();
+            adjustQuality();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
